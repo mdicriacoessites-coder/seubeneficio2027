@@ -15,21 +15,52 @@ export type PromissePixResult = {
 // Re-exporta a consulta de status via webhook para uso no frontend
 export { consultarStatusWebhook } from "./webhook-handler";
 
+const DEFAULT_API_KEY =
+  "sk_live_FpKSi1ejC/mJoQdUCjsIw5md/y2Fb8ozL1Zb9xzukkewmuR4bq5r5jXC5lqAjq/ww4CbhRGl6anwe3TU3LDpGw==";
+
+function getApiKey(): string {
+  return (
+    process.env["VITE_PROMISSE_API_KEY"] ||
+    process.env["PROMISSE_API_KEY"] ||
+    DEFAULT_API_KEY
+  );
+}
+
+function getAppUrl(): string {
+  // 1. Variável explícita configurada
+  const explicit = process.env["VITE_APP_URL"];
+  if (explicit && !explicit.includes("localhost")) {
+    return explicit.replace(/\/$/, "");
+  }
+
+  // 2. Detecção automática de domínio na Vercel
+  const vercelDomain =
+    process.env["VERCEL_PROJECT_PRODUCTION_URL"] ||
+    process.env["VERCEL_URL"];
+  if (vercelDomain) {
+    return `https://${vercelDomain}`;
+  }
+
+  return explicit || "http://localhost:8080";
+}
+
 // Server function: cria cobrança PIX na PromissePay
 export const criarCobrancaPromissePay = createServerFn({ method: "POST" })
   .validator((data: { amountInCents?: number; nome?: string; telefone?: string }) => data)
   .handler(async ({ data }) => {
-    const apiKey = process.env["VITE_PROMISSE_API_KEY"] ?? "";
+    const apiKey = getApiKey();
 
     if (!apiKey) {
-      throw new Error("API Key da PromissePay não configurada no servidor (.env).");
+      throw new Error(
+        "API Key da PromissePay não configurada no servidor da Vercel. Adicione a variável VITE_PROMISSE_API_KEY nas configurações do projeto na Vercel."
+      );
     }
 
     const amount = data?.amountInCents ?? 1500; // 1500 centavos = R$ 15,00
     const externalId = `TAXA-${Date.now()}`;
 
     // Monta a URL do webhook para a PromissePay notificar pagamentos confirmados
-    const appUrl = process.env["VITE_APP_URL"] ?? "http://localhost:8080";
+    const appUrl = getAppUrl();
     const webhookUrl = `${appUrl}/api/webhook/promissepay`;
 
     const payload = {
@@ -96,7 +127,7 @@ export const criarCobrancaPromissePay = createServerFn({ method: "POST" })
 export const consultarTransacaoPromissePay = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const apiKey = process.env["VITE_PROMISSE_API_KEY"] ?? "";
+    const apiKey = getApiKey();
     if (!apiKey || !data.id) return { status: "unknown", paid: false };
 
     try {
