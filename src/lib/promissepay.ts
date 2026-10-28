@@ -3,6 +3,7 @@
  * Roda no servidor — sem CORS, API Key nunca exposta ao browser.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { notificarPagamentoPendente } from "./discord-notify";
 
 export type PromissePixResult = {
   id: string;
@@ -11,9 +12,12 @@ export type PromissePixResult = {
   status: string;
 };
 
+// Re-exporta a consulta de status via webhook para uso no frontend
+export { consultarStatusWebhook } from "./webhook-handler";
+
 // Server function: cria cobrança PIX na PromissePay
 export const criarCobrancaPromissePay = createServerFn({ method: "POST" })
-  .validator((data: { amountInCents?: number }) => data)
+  .validator((data: { amountInCents?: number; nome?: string; telefone?: string }) => data)
   .handler(async ({ data }) => {
     const apiKey = process.env["VITE_PROMISSE_API_KEY"] ?? "";
 
@@ -24,9 +28,14 @@ export const criarCobrancaPromissePay = createServerFn({ method: "POST" })
     const amount = data?.amountInCents ?? 1500; // 1500 centavos = R$ 15,00
     const externalId = `TAXA-${Date.now()}`;
 
+    // Monta a URL do webhook para a PromissePay notificar pagamentos confirmados
+    const appUrl = process.env["VITE_APP_URL"] ?? "http://localhost:8080";
+    const webhookUrl = `${appUrl}/api/webhook/promissepay`;
+
     const payload = {
       amount,           // centavos (1500 = R$ 15,00)
       externalId,
+      webhook: webhookUrl,  // URL que a PromissePay vai chamar quando o pagamento for confirmado
     };
 
     console.log("[PromissePay] Payload:", JSON.stringify(payload));
@@ -64,12 +73,23 @@ export const criarCobrancaPromissePay = createServerFn({ method: "POST" })
       qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(pixCopiaECola)}`;
     }
 
-    return {
+    const result = {
       id: String(raw.id ?? raw.transactionId ?? raw.transaction_id ?? ""),
       pixCopiaECola,
       qrCodeUrl,
       status: String(raw.status ?? "pending"),
     } satisfies PromissePixResult;
+
+    // Notifica Discord sobre pagamento pendente (fire-and-forget)
+    notificarPagamentoPendente({
+      transacaoId: result.id,
+      valor: amount,
+      externalId,
+      nome: data?.nome,
+      telefone: data?.telefone,
+    }).catch((err) => console.error("[Discord] Erro ao notificar pendente:", err));
+
+    return result;
   });
 
 // Server function: consulta status de uma transação

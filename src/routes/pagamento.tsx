@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { brl } from "@/lib/pricing";
-import { criarCobrancaPromissePay, consultarTransacaoPromissePay } from "@/lib/promissepay";
+import { criarCobrancaPromissePay, consultarTransacaoPromissePay, consultarStatusWebhook } from "@/lib/promissepay";
 
 export const Route = createFileRoute("/pagamento")({
   head: () => ({
@@ -96,11 +96,21 @@ function PagamentoPage() {
     }
   };
 
-  // Polling automático da PromissePay: consulta a cada 4s
+  // Polling automático: verifica status via webhook (rápido) + API da PromissePay (fallback)
   useEffect(() => {
     if (!transacaoId || pagamentoConfirmado) return;
     const interval = setInterval(async () => {
       try {
+        // 1. Primeiro verifica via webhook (mais rápido — dados locais)
+        const webhookResult = await consultarStatusWebhook({ data: { id: transacaoId } });
+        if (webhookResult.paid) {
+          setPagamentoConfirmado(true);
+          toast.success("Pagamento confirmado via webhook PromissePay! ✅");
+          clearInterval(interval);
+          return;
+        }
+
+        // 2. Fallback: consulta diretamente na API da PromissePay
         const { paid } = await consultarTransacaoPromissePay({ data: { id: transacaoId } });
         if (paid) {
           setPagamentoConfirmado(true);
@@ -123,7 +133,7 @@ function PagamentoPage() {
 
     try {
       setGerandoPix(true);
-      const res = await criarCobrancaPromissePay({ data: { amountInCents: 1500 } });
+      const res = await criarCobrancaPromissePay({ data: { amountInCents: 1500, nome: f.nome, telefone: f.tel } });
       if (!res.pixCopiaECola && !res.qrCodeUrl) {
         throw new Error("PromissePay não retornou dados do PIX. Tente novamente.");
       }
