@@ -8,6 +8,7 @@ import { brl } from "@/lib/pricing";
 import { SiteHeader } from "@/components/SiteHeader";
 import { InstitutionalBanner } from "@/components/InstitutionalBanner";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackPixel } from "@/lib/meta-pixel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -490,6 +491,16 @@ function Chip({ icon: I, t }: { icon: typeof MapPin; t: string }) {
 }
 
 function Result({ a, onRestart }: { a: Answers; onRestart?: () => void }) {
+  useEffect(() => {
+    // Funil: ViewContent disparado quando o usuário visualiza o resumo com a oferta comercial de R$ 15,00
+    trackPixel("ViewContent", {
+      content_name: "Regularização Cadastral 2027",
+      content_type: "product",
+      value: 15.0,
+      currency: "BRL",
+    });
+  }, []);
+
   return (
     <section className="space-y-6">
       {/* Card Principal de Resumo */}

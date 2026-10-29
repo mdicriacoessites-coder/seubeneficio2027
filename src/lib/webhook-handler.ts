@@ -23,6 +23,8 @@ import {
   getPaymentStatus,
   type WebhookPaymentData,
 } from "./webhook-store";
+import { sendMetaCapiEvent } from "./meta-conversions-api";
+import { notificarPagamentoConfirmado } from "./discord-notify";
 
 // Statuses considerados como "pago"
 const PAID_STATUSES = [
@@ -96,6 +98,34 @@ export const handlePromissePayWebhook = createServerFn({ method: "POST" })
     console.log(
       `[Webhook PromissePay] ✅ Pagamento ${transactionId} processado e salvo!`,
     );
+
+    // Se o pagamento foi realmente confirmado, dispara a conversão Purchase na Meta Conversions API (CAPI)
+    if (paid) {
+      sendMetaCapiEvent({
+        event_name: "Purchase",
+        event_id: `purchase_${transactionId}`,
+        custom_data: {
+          value: paymentData.amount ? paymentData.amount / 100 : 15.0,
+          currency: "BRL",
+          content_name: "Regularização Cadastral 2027",
+          content_type: "product",
+          order_id: transactionId,
+        },
+        user_data: {
+          nome: paymentData.payerName || undefined,
+        },
+      }).catch((err) => {
+        console.warn("[Meta CAPI] Erro ao enviar Purchase via webhook:", err?.message || err);
+      });
+
+      notificarPagamentoConfirmado({
+        transacaoId: transactionId,
+        valor: paymentData.amount || 1500,
+        externalId: transactionId,
+        nome: paymentData.payerName || undefined,
+        pagoEm: paymentData.paidAt || undefined,
+      }).catch((err) => console.error("[Discord] Erro ao notificar confirmado:", err));
+    }
 
     // Retorna 200 OK conforme exigido pela PromissePay
     return { success: true, message: "Webhook recebido com sucesso" };

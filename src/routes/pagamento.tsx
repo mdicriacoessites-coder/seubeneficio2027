@@ -23,6 +23,7 @@ import {
 } from "@/lib/promissepay";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { trackPixel } from "@/lib/meta-pixel";
 import logoBolsaFamilia from "@/assets/logo-bolsa-familia.png";
 import retratoLula from "@/assets/retrato-lula.png";
 
@@ -64,6 +65,44 @@ function PagamentoPage() {
   const [pagamentoConfirmado, setPagamentoConfirmado] = useState(false);
 
   const valor = 15;
+
+  // Dispara InitiateCheckout ao acessar a etapa de checkout / pagamento
+  useEffect(() => {
+    trackPixel("InitiateCheckout", {
+      content_name: "Regularização Cadastral 2027",
+      content_type: "product",
+      value: valor,
+      currency: "BRL",
+      num_items: 1,
+    });
+  }, []);
+
+  // Dispara Purchase EXCLUSIVAMENTE após confirmação real pelo gateway PromissePay (webhook ou polling)
+  useEffect(() => {
+    if (pagamentoConfirmado && transacaoId) {
+      trackPixel(
+        "Purchase",
+        {
+          content_name: "Regularização Cadastral 2027",
+          content_type: "product",
+          value: valor,
+          currency: "BRL",
+          num_items: 1,
+          order_id: transacaoId,
+        },
+        {
+          eventId: `purchase_${transacaoId}`,
+          userData: {
+            nome: f.nome,
+            telefone: f.tel,
+            cidade: f.cidade,
+            uf: f.uf,
+            cep: f.cep,
+          },
+        },
+      );
+    }
+  }, [pagamentoConfirmado, transacaoId]);
 
   // Carrega respostas salvas do questionário
   useEffect(() => {
