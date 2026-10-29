@@ -2,17 +2,20 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowRight, Check, ClipboardList, Clock, FileText,
-  Home, Lock, MapPin, Pencil, QrCode, ShieldCheck, Sparkles, Users,
+  Home, Lock, MapPin, Pencil, QrCode, ShieldCheck, Sparkles, Users, CheckCircle2,
 } from "lucide-react";
 import { brl } from "@/lib/pricing";
+import { SiteHeader } from "@/components/SiteHeader";
+import { InstitutionalBanner } from "@/components/InstitutionalBanner";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SEU Benefício 2027 — Organize seu cadastro" },
-      { name: "description", content: "Questionário gratuito e informativo para organizar suas informações sobre benefícios sociais em 2027." },
-      { property: "og:title", content: "SEU Benefício 2027 — Organize seu cadastro" },
-      { property: "og:description", content: "Responda a algumas perguntas e veja os próximos passos pelos canais oficiais gratuitos." },
+      { title: "SEU Benefício 2027 — Triagem e Regularização Cadastral" },
+      { name: "description", content: "Organize seus dados e verifique sua situação no Bolsa Família e CadÚnico para 2027." },
+      { property: "og:title", content: "SEU Benefício 2027 — Triagem e Regularização Cadastral" },
+      { property: "og:description", content: "Responda a perguntas simples e organize suas informações para evitar pendências no seu benefício." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -24,10 +27,31 @@ const UFS: [string, string][] = [
   ["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"],
 ];
 
-const BENEFIT = ["Sim, recebo o Bolsa Família.","Sim, recebo outro benefício social.","Recebo mais de um benefício.","Não recebo nenhum benefício atualmente.","Estou aguardando uma resposta sobre meu cadastro."];
-const CAD = ["Sim, meu cadastro está atualizado.","Sim, mas não sei se está atualizado.","Tenho cadastro, mas preciso atualizar.","Não possuo cadastro.","Não tenho certeza."];
-const PEOPLE = ["Moro sozinho(a).","2 pessoas.","3 pessoas.","4 pessoas.","5 pessoas ou mais."];
-const KIDS = ["Sim.","Não.","Prefiro não informar."];
+const BENEFIT = [
+  "Sim, recebo o Bolsa Família.",
+  "Sim, recebo outro benefício social.",
+  "Recebo mais de um benefício.",
+  "Não recebo nenhum benefício atualmente.",
+  "Estou aguardando uma resposta sobre meu cadastro.",
+];
+
+const CAD = [
+  "Sim, meu cadastro está atualizado.",
+  "Sim, mas não sei se está atualizado.",
+  "Tenho cadastro, mas preciso atualizar.",
+  "Não possuo cadastro.",
+  "Não tenho certeza.",
+];
+
+const PEOPLE = [
+  "Moro sozinho(a).",
+  "2 pessoas.",
+  "3 pessoas.",
+  "4 pessoas.",
+  "5 pessoas ou mais.",
+];
+
+const KIDS = ["Sim.", "Não.", "Prefiro não informar."];
 
 type Answers = { uf: string; city: string; benefit: string; cad: string; people: string; kids: string };
 const EMPTY: Answers = { uf: "", city: "", benefit: "", cad: "", people: "", kids: "" };
@@ -42,14 +66,35 @@ function Index() {
   const [returnToReview, setReturnToReview] = useState(false);
 
   useEffect(() => {
-    try { const s = sessionStorage.getItem(KEY); if (s) setA({ ...EMPTY, ...JSON.parse(s) }); } catch { /* ignore */ }
+    try {
+      const s = sessionStorage.getItem(KEY);
+      if (s) setA({ ...EMPTY, ...JSON.parse(s) });
+    } catch {
+      /* ignore */
+    }
   }, []);
-  useEffect(() => { sessionStorage.setItem(KEY, JSON.stringify(a)); }, [a]);
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [screen]);
+
+  useEffect(() => {
+    sessionStorage.setItem(KEY, JSON.stringify(a));
+  }, [a]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [screen]);
 
   const set = (k: keyof Answers, v: string) => setA((p) => ({ ...p, [k]: v }));
-  const next = (n: Screen) => { if (returnToReview) { setReturnToReview(false); setScreen("review"); } else setScreen(n); };
-  const edit = (n: Screen) => { setReturnToReview(true); setScreen(n); };
+  const next = (n: Screen) => {
+    if (returnToReview) {
+      setReturnToReview(false);
+      setScreen("review");
+    } else {
+      setScreen(n);
+    }
+  };
+  const edit = (n: Screen) => {
+    setReturnToReview(true);
+    setScreen(n);
+  };
 
   const step = typeof screen === "number" ? screen : TOTAL;
   const back = () => {
@@ -59,98 +104,157 @@ function Index() {
     setScreen(((screen as number) - 1) as Screen);
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-          <button
-            onClick={back}
-            disabled={screen === 1}
-            aria-label="Voltar"
-            className={`grid size-10 place-items-center rounded-full text-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring ${screen === 1 ? "invisible pointer-events-none" : ""}`}
-          >
-            <ArrowLeft className="size-5" />
-          </button>
-          <Logo />
-          <div className="ml-auto text-right text-xs text-muted-foreground">
-            {typeof screen === "number" ? (
-              <>
-                <div className="font-semibold text-foreground">Etapa {step} de {TOTAL}</div>
-                <div className="flex items-center justify-end gap-1"><Clock className="size-3" /> ~{Math.max(1, TOTAL - step + 1) * 25}s restantes</div>
-              </>
-            ) : <div className="font-semibold text-foreground">{screen === "review" ? "Revisão" : "Resumo"}</div>}
-          </div>
-        </div>
-        <div className="h-1 bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={typeof screen === "number" ? Math.round(((step - 1) / TOTAL) * 100) : 100}>
-          <div className="h-full bg-primary transition-all duration-500" style={{ width: `${typeof screen === "number" ? ((step - 1) / TOTAL) * 100 + 4 : 100}%` }} />
-        </div>
-      </header>
+  const progressPercent = typeof screen === "number" ? ((step - 1) / TOTAL) * 100 + 10 : 100;
+  const timeRemaining = Math.max(1, TOTAL - step + 1) * 25;
 
-      <main key={String(screen)} className="animate-step mx-auto max-w-2xl px-4 pb-16 pt-8">
-        {screen === 1 && <StepLocation a={a} set={set} onNext={() => next(2)} />}
-        {screen === 2 && (
-          <Question title="Você recebe atualmente algum benefício social?">
-            <Options options={BENEFIT} value={a.benefit} onChange={(v) => set("benefit", v)} />
-            <Continue disabled={!a.benefit} onClick={() => next(3)} />
-          </Question>
-        )}
-        {screen === 3 && (
-          <Question title="Você possui inscrição no Cadastro Único (CadÚnico)?">
-            <Options options={CAD} value={a.cad} onChange={(v) => set("cad", v)} />
-            <div className="mt-5 flex gap-3 rounded-2xl bg-accent p-4 text-sm text-accent-foreground">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0" />
-              <p>Manter os dados do CadÚnico atualizados (pelo menos a cada 2 anos ou quando algo muda na família) ajuda a evitar bloqueios e pendências. A atualização é gratuita e feita no CRAS. Isso não garante aumento de valores.</p>
-            </div>
-            <Continue disabled={!a.cad} onClick={() => next(4)} />
-          </Question>
-        )}
-        {screen === 4 && (
-          <Question title="Quantas pessoas moram com você?">
-            <Options options={PEOPLE} value={a.people} onChange={(v) => set("people", v)} />
-            <h3 className="mt-8 text-lg font-bold text-foreground">Você possui crianças ou adolescentes em sua residência? <span className="text-sm font-medium text-muted-foreground">(opcional)</span></h3>
-            <div className="mt-3"><Options options={KIDS} value={a.kids} onChange={(v) => set("kids", v)} compact /></div>
-            <Continue disabled={!a.people} onClick={() => next("review")} label="REVISAR INFORMAÇÕES" />
-          </Question>
-        )}
-        {screen === "review" && <Review a={a} edit={edit} onNext={() => setScreen("result")} />}
-        {screen === "result" && <Result a={a} onRestart={() => { setA(EMPTY); setScreen(1); }} />}
-      </main>
+  return (
+    <div className="min-h-screen bg-[#FFFFFF] text-[#202020] flex flex-col justify-between selection:bg-[#FCEBED] selection:text-[#C8102E]">
+      <div>
+        {/* Cabeçalho Premium Vermelho com Branco */}
+        <SiteHeader
+          canBack={screen !== 1}
+          onBack={back}
+          step={typeof screen === "number" ? step : undefined}
+          totalSteps={TOTAL}
+          timeRemaining={typeof screen === "number" ? timeRemaining : undefined}
+          stepLabel={screen === "review" ? "Revisão dos Dados" : screen === "result" ? "Resumo Concluído" : undefined}
+          showProgress={true}
+          progressPercent={progressPercent}
+        />
+
+        <main key={String(screen)} className="animate-step mx-auto max-w-2xl px-4 pb-16 pt-6 sm:pt-8">
+          {/* Banner Institucional com as duas Logos integradas */}
+          <InstitutionalBanner compact={screen === "review" || screen === "result"} />
+
+          {/* Etapas do Questionário */}
+          {screen === 1 && <StepLocation a={a} set={set} onNext={() => next(2)} />}
+          {screen === 2 && (
+            <Question
+              title="Você recebe atualmente algum benefício social?"
+              subtitle="Informe sua situação atual para adequarmos as diretrizes de regularização do Bolsa Família 2027."
+            >
+              <Options options={BENEFIT} value={a.benefit} onChange={(v) => set("benefit", v)} />
+              <Continue disabled={!a.benefit} onClick={() => next(3)} />
+            </Question>
+          )}
+          {screen === 3 && (
+            <Question
+              title="Você possui inscrição no Cadastro Único (CadÚnico)?"
+              subtitle="O CadÚnico é o registro obrigatório para concessão e manutenção de benefícios sociais."
+            >
+              <Options options={CAD} value={a.cad} onChange={(v) => set("cad", v)} />
+              <div className="mt-5 flex gap-3 rounded-2xl border border-[#C8102E]/20 bg-[#FCEBED] p-4 text-xs sm:text-sm text-[#A50D24]">
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#C8102E]" />
+                <p className="leading-relaxed">
+                  <strong>Atenção ao CadÚnico:</strong> Manter os dados atualizados a cada 2 anos (ou sempre que mudar endereço, renda ou membros da família) previne o bloqueio preventivo do Bolsa Família. A emissão cadastral digital ajuda você a conferir suas informações.
+                </p>
+              </div>
+              <Continue disabled={!a.cad} onClick={() => next(4)} />
+            </Question>
+          )}
+          {screen === 4 && (
+            <Question
+              title="Quantas pessoas moram na sua residência?"
+              subtitle="A composição da família define faixas de renda per capita e benefícios complementares."
+            >
+              <Options options={PEOPLE} value={a.people} onChange={(v) => set("people", v)} />
+              <div className="mt-8">
+                <h3 className="text-base sm:text-lg font-bold text-[#202020]">
+                  Há crianças, adolescentes ou gestantes na residência?{" "}
+                  <span className="text-xs font-normal text-[#666666]">(opcional)</span>
+                </h3>
+                <div className="mt-3">
+                  <Options options={KIDS} value={a.kids} onChange={(v) => set("kids", v)} compact />
+                </div>
+              </div>
+              <Continue disabled={!a.people} onClick={() => next("review")} label="REVISAR INFORMAÇÕES" />
+            </Question>
+          )}
+          {screen === "review" && <Review a={a} edit={edit} onNext={() => setScreen("result")} />}
+          {screen === "result" && (
+            <Result
+              a={a}
+              onRestart={() => {
+                setA(EMPTY);
+                setScreen(1);
+              }}
+            />
+          )}
+        </main>
+      </div>
+
+      <SiteFooter />
     </div>
   );
 }
 
-function Logo() {
+function Question({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-2 font-extrabold tracking-tight text-foreground">
-      <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles className="size-4" /></span>
-      SEU Benefício <span className="text-primary">2027</span>
-    </div>
-  );
-}
-
-
-
-function Question({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section aria-labelledby="q">
-      <h2 id="q" className="mb-6 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">{title}</h2>
+    <section aria-labelledby="question-title" className="rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-7 shadow-soft">
+      <div className="mb-6">
+        <h2
+          id="question-title"
+          className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#202020]"
+        >
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="mt-1 text-xs sm:text-sm text-[#666666]">
+            {subtitle}
+          </p>
+        )}
+      </div>
       {children}
     </section>
   );
 }
 
-function Options({ options, value, onChange, compact }: { options: string[]; value: string; onChange: (v: string) => void; compact?: boolean }) {
+function Options({
+  options,
+  value,
+  onChange,
+  compact,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  compact?: boolean;
+}) {
   return (
-    <div role="radiogroup" className={compact ? "grid gap-2 sm:grid-cols-3" : "grid gap-3"}>
+    <div role="radiogroup" className={compact ? "grid gap-2.5 sm:grid-cols-3" : "grid gap-3"}>
       {options.map((o) => {
         const sel = value === o;
         return (
-          <button key={o} role="radio" aria-checked={sel} onClick={() => onChange(o)}
-            className={`shadow-soft flex items-center gap-3 rounded-2xl border-2 bg-card p-4 text-left font-semibold text-card-foreground transition active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-ring ${sel ? "border-primary bg-accent" : "border-transparent hover:border-border"}`}>
-            <span className={`grid size-6 shrink-0 place-items-center rounded-full border-2 transition ${sel ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
-              {sel && <Check className="size-3.5" strokeWidth={3} />}
+          <button
+            key={o}
+            type="button"
+            role="radio"
+            aria-checked={sel}
+            onClick={() => onChange(o)}
+            className={`flex items-center gap-3.5 rounded-xl border-2 p-3.5 sm:p-4 text-left font-semibold transition-all duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] ${
+              sel
+                ? "border-[#C8102E] bg-[#FCEBED] text-[#A50D24] shadow-sm"
+                : "border-[#E5E5E5] bg-white text-[#202020] hover:border-[#C8102E]/40 hover:bg-[#F5F5F5]"
+            }`}
+          >
+            <span
+              className={`grid size-6 shrink-0 place-items-center rounded-full border-2 transition-all ${
+                sel
+                  ? "border-[#C8102E] bg-[#C8102E] text-white"
+                  : "border-[#DCDCDC] bg-white text-transparent"
+              }`}
+            >
+              {sel && <Check className="size-3.5 stroke-[3]" />}
             </span>
-            {o}
+            <span className="text-sm leading-snug">{o}</span>
           </button>
         );
       })}
@@ -158,16 +262,36 @@ function Options({ options, value, onChange, compact }: { options: string[]; val
   );
 }
 
-function Continue({ disabled, onClick, label = "CONTINUAR" }: { disabled?: boolean; onClick: () => void; label?: string }) {
+function Continue({
+  disabled,
+  onClick,
+  label = "CONTINUAR",
+}: {
+  disabled?: boolean;
+  onClick: () => void;
+  label?: string;
+}) {
   return (
-    <button disabled={disabled} onClick={onClick}
-      className="shadow-primary mt-8 inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary font-bold tracking-wide text-primary-foreground transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-40 disabled:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] text-base font-extrabold tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2"
+    >
       {label} <ArrowRight className="size-5" />
     </button>
   );
 }
 
-function StepLocation({ a, set, onNext }: { a: Answers; set: (k: keyof Answers, v: string) => void; onNext: () => void }) {
+function StepLocation({
+  a,
+  set,
+  onNext,
+}: {
+  a: Answers;
+  set: (k: keyof Answers, v: string) => void;
+  onNext: () => void;
+}) {
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -176,7 +300,8 @@ function StepLocation({ a, set, onNext }: { a: Answers; set: (k: keyof Answers, 
 
   useEffect(() => {
     if (!a.uf) return;
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${a.uf}/municipios`)
       .then((r) => r.json())
       .then((d: { nome: string }[]) => setCities(d.map((c) => c.nome)))
@@ -185,185 +310,318 @@ function StepLocation({ a, set, onNext }: { a: Answers; set: (k: keyof Answers, 
   }, [a.uf]);
 
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const matches = useMemo(() => (q ? cities.filter((c) => norm(c).includes(norm(q))).slice(0, 8) : []), [q, cities]);
+  const matches = useMemo(
+    () => (q ? cities.filter((c) => norm(c).includes(norm(q))).slice(0, 8) : []),
+    [q, cities],
+  );
   const valid = a.uf && cities.includes(a.city);
 
   return (
-    <Question title="Em qual estado você mora atualmente?">
-      <label className="sr-only" htmlFor="uf">Estado</label>
-      <select id="uf" value={a.uf} onChange={(e) => { set("uf", e.target.value); set("city", ""); setQ(""); }}
-        className="shadow-soft h-14 w-full rounded-2xl border border-input bg-card px-4 font-semibold text-card-foreground focus-visible:outline-2 focus-visible:outline-ring">
-        <option value="">Selecione o estado</option>
-        {UFS.map(([s, n]) => <option key={s} value={s}>{n}</option>)}
-      </select>
-
-      <h3 className="mb-3 mt-8 text-lg font-bold text-foreground">Qual é a sua cidade?</h3>
-      <div className="relative">
-        <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-        <input
-          aria-label="Cidade" disabled={!a.uf || loading} value={q} autoComplete="off"
-          placeholder={!a.uf ? "Selecione o estado primeiro" : loading ? "Carregando cidades..." : "Digite o nome da cidade"}
-          onChange={(e) => { setQ(e.target.value); set("city", ""); setOpen(true); }}
-          onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="shadow-soft h-14 w-full rounded-2xl border border-input bg-card pl-12 pr-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-ring"
-        />
-        {open && matches.length > 0 && !a.city && (
-          <ul role="listbox" className="shadow-soft absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-border bg-popover p-1">
-            {matches.map((c) => (
-              <li key={c}>
-                <button type="button" onMouseDown={() => { set("city", c); setQ(c); setOpen(false); }}
-                  className="w-full rounded-xl px-4 py-3 text-left font-medium text-popover-foreground hover:bg-muted focus-visible:bg-muted">{c}</button>
-              </li>
+    <Question
+      title="Em qual estado e cidade você reside atualmente?"
+      subtitle="Selecione sua localidade para vincularmos ao calendário de pagamentos e agências do seu município."
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]" htmlFor="uf">
+            Estado (UF)
+          </label>
+          <select
+            id="uf"
+            value={a.uf}
+            onChange={(e) => {
+              set("uf", e.target.value);
+              set("city", "");
+              setQ("");
+            }}
+            className="h-12 sm:h-14 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] transition-colors focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20"
+          >
+            <option value="">Selecione seu estado...</option>
+            {UFS.map(([s, n]) => (
+              <option key={s} value={s}>
+                {n} ({s})
+              </option>
             ))}
-          </ul>
-        )}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+            Cidade / Município
+          </label>
+          <div className="relative">
+            <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#C8102E]" />
+            <input
+              aria-label="Cidade"
+              disabled={!a.uf || loading}
+              value={q}
+              autoComplete="off"
+              placeholder={
+                !a.uf
+                  ? "Selecione o estado acima primeiro"
+                  : loading
+                  ? "Carregando cidades do IBGE..."
+                  : "Digite o nome da sua cidade"
+              }
+              onChange={(e) => {
+                setQ(e.target.value);
+                set("city", "");
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setTimeout(() => setOpen(false), 200)}
+              className="h-12 sm:h-14 w-full rounded-xl border border-[#E5E5E5] bg-white pl-12 pr-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] disabled:bg-[#F5F5F5] disabled:opacity-60 transition-colors focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20"
+            />
+            {open && matches.length > 0 && !a.city && (
+              <ul
+                role="listbox"
+                className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-[#E5E5E5] bg-white p-1 shadow-lg"
+              >
+                {matches.map((c) => (
+                  <li key={c}>
+                    <button
+                      type="button"
+                      onMouseDown={() => {
+                        set("city", c);
+                        setQ(c);
+                        setOpen(false);
+                      }}
+                      className="w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-[#202020] hover:bg-[#FCEBED] hover:text-[#A50D24] transition-colors"
+                    >
+                      {c}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {error && <p className="mt-1.5 text-xs font-bold text-[#C8102E]">{error}</p>}
+          {q && !a.city && !loading && cities.length > 0 && !open && (
+            <p className="mt-1.5 text-xs font-semibold text-[#C8102E]">
+              Selecione uma cidade na lista para validar seu município.
+            </p>
+          )}
+        </div>
       </div>
-      {error && <p className="mt-2 text-sm font-medium text-destructive">{error}</p>}
-      {q && !a.city && !loading && cities.length > 0 && !open && <p className="mt-2 text-sm font-medium text-destructive">Escolha uma cidade da lista de sugestões.</p>}
+
       <Continue disabled={!valid} onClick={onNext} />
     </Question>
   );
 }
 
-function Review({ a, edit, onNext }: { a: Answers; edit: (s: Screen) => void; onNext: () => void }) {
+function Review({
+  a,
+  edit,
+  onNext,
+}: {
+  a: Answers;
+  edit: (s: Screen) => void;
+  onNext: () => void;
+}) {
   const uf = UFS.find(([s]) => s === a.uf)?.[1];
   const rows: { icon: typeof MapPin; label: string; value: string; step: Screen }[] = [
-    { icon: MapPin, label: "Estado e cidade", value: `${a.city} — ${uf ?? ""}`, step: 1 },
-    { icon: FileText, label: "Situação do benefício", value: a.benefit, step: 2 },
-    { icon: ClipboardList, label: "Situação do CadÚnico", value: a.cad, step: 3 },
-    { icon: Users, label: "Composição familiar", value: `${a.people}${a.kids ? ` Crianças/adolescentes: ${a.kids}` : ""}`, step: 4 },
+    { icon: MapPin, label: "Localidade e Município", value: `${a.city} — ${uf ?? a.uf}`, step: 1 },
+    { icon: FileText, label: "Situação do Benefício", value: a.benefit, step: 2 },
+    { icon: ClipboardList, label: "Situação no CadÚnico", value: a.cad, step: 3 },
+    {
+      icon: Users,
+      label: "Composição Familiar",
+      value: `${a.people}${a.kids ? ` · Dependentes/Crianças: ${a.kids}` : ""}`,
+      step: 4,
+    },
   ];
+
   return (
-    <section>
-      <h2 className="mb-6 text-3xl font-extrabold tracking-tight text-foreground">Confira suas informações</h2>
+    <section className="rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-7 shadow-soft">
+      <div className="mb-6 flex items-center justify-between border-b border-[#E5E5E5] pb-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#202020]">
+            Confira suas informações
+          </h2>
+          <p className="mt-0.5 text-xs sm:text-sm text-[#666666]">
+            Verifique se todos os dados declarados estão corretos antes de emitir o resumo.
+          </p>
+        </div>
+        <div className="hidden sm:block">
+          <span className="rounded-full bg-[#FCEBED] px-3 py-1 text-xs font-bold text-[#A50D24]">
+            Revisão
+          </span>
+        </div>
+      </div>
+
       <div className="grid gap-3">
         {rows.map(({ icon: I, label, value, step }) => (
-          <div key={label} className="shadow-soft flex items-start gap-4 rounded-2xl bg-card p-5">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><I className="size-5" /></span>
-            <div className="flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-              <div className="mt-1 font-semibold text-card-foreground">{value}</div>
+          <div
+            key={label}
+            className="flex items-start justify-between gap-4 rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-4 transition hover:border-[#C8102E]/30"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#FCEBED] text-[#C8102E]">
+                <I className="size-4.5" />
+              </span>
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">{label}</div>
+                <div className="mt-0.5 text-sm font-bold text-[#202020]">{value}</div>
+              </div>
             </div>
-            <button onClick={() => edit(step)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-primary hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
-              <Pencil className="size-3.5" /> EDITAR
+            <button
+              type="button"
+              onClick={() => edit(step)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#C8102E] bg-white px-2.5 py-1 text-xs font-bold text-[#C8102E] transition hover:bg-[#FCEBED] active:scale-95"
+            >
+              <Pencil className="size-3" /> EDITAR
             </button>
           </div>
         ))}
       </div>
 
-      <Continue onClick={onNext} label="VER PRÓXIMOS PASSOS" />
+      <Continue onClick={onNext} label="VER RESUMO E PRÓXIMOS PASSOS" />
     </section>
   );
 }
 
 function Chip({ icon: I, t }: { icon: typeof MapPin; t: string }) {
-  return <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2 font-medium text-foreground"><I className="size-4 shrink-0 text-primary" />{t}</div>;
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-[#202020]">
+      <I className="size-4 shrink-0 text-[#C8102E]" />
+      <span className="truncate">{t}</span>
+    </div>
+  );
 }
 
 function Result({ a, onRestart }: { a: Answers; onRestart?: () => void }) {
-
-
   return (
-    <section>
-      <div className="shadow-soft rounded-3xl bg-card p-6 text-center sm:p-8">
-        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-success text-success-foreground"><FileText className="size-8" /></span>
-        <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-card-foreground">Seu resumo cadastral está pronto</h2>
-        <p className="mx-auto mt-3 max-w-md text-muted-foreground">Confira os próximos passos para verificar sua situação e acompanhar eventuais atualizações oficiais dos seus benefícios sociais em 2027.</p>
-        <div className="mt-6 grid gap-2 text-left text-sm sm:grid-cols-2">
-          <Chip icon={MapPin} t={`${a.city}/${a.uf}`} />
+    <section className="space-y-6">
+      {/* Card Principal de Resumo */}
+      <div className="rounded-2xl border border-[#E5E5E5] bg-white p-6 sm:p-8 text-center shadow-soft">
+        <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#FCEBED] text-[#C8102E] border border-[#C8102E]/20">
+          <FileText className="size-8 stroke-[2.5]" />
+        </div>
+
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
+          <CheckCircle2 className="size-3.5" /> Triagem Concluída com Sucesso
+        </div>
+
+        <h2 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight text-[#202020]">
+          Seu resumo cadastral 2027 está pronto
+        </h2>
+
+        <p className="mx-auto mt-2 max-w-lg text-xs sm:text-sm text-[#555555] leading-relaxed">
+          Suas informações foram agrupadas com base nos critérios do <strong>Programa Bolsa Família</strong> e <strong>CadÚnico</strong>. Siga os passos abaixo para garantir seu comprovante com aprovação imediata via PIX.
+        </p>
+
+        <div className="mt-6 grid gap-2.5 text-left text-sm sm:grid-cols-2">
+          <Chip icon={MapPin} t={`${a.city} — ${a.uf}`} />
           <Chip icon={Users} t={a.people} />
           <Chip icon={ClipboardList} t={a.cad} />
           <Chip icon={Home} t={a.benefit} />
         </div>
       </div>
 
-
-      {/* Próximos Passos */}
-      <div className="mt-8">
-        <h3 className="mb-4 text-lg font-bold text-foreground">O que acontece agora?</h3>
+      {/* O que acontece agora? */}
+      <div className="rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-7 shadow-soft">
+        <h3 className="mb-4 text-base sm:text-lg font-black text-[#202020] flex items-center gap-2">
+          <Sparkles className="size-5 text-[#C8102E]" />
+          Como funciona a emissão cadastral:
+        </h3>
         <ol className="grid gap-3">
-          <li className="shadow-soft flex gap-4 rounded-2xl bg-card p-4">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
+          <li className="flex gap-3.5 rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-3.5 sm:p-4">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#C8102E] text-xs font-black text-white">
+              1
+            </span>
             <div className="pt-0.5">
-              <p className="font-semibold text-foreground">Preencha seus dados básicos</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">Na próxima tela, você informará nome completo e WhatsApp para concluir seu cadastro.</p>
+              <p className="text-sm font-bold text-[#202020]">Preencha seus dados de contato</p>
+              <p className="mt-0.5 text-xs text-[#555555]">
+                Na próxima tela, informe seu nome completo e WhatsApp para vincular ao comprovante de emissão.
+              </p>
             </div>
           </li>
-          <li className="shadow-soft flex gap-4 rounded-2xl bg-card p-4">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</span>
+          <li className="flex gap-3.5 rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-3.5 sm:p-4">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#C8102E] text-xs font-black text-white">
+              2
+            </span>
             <div className="pt-0.5">
-              <p className="font-semibold text-foreground">Use um número de telefone válido</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">Sua confirmação e o comprovante do cadastro serão enviados por SMS e WhatsApp — certifique-se de que o número está correto.</p>
+              <p className="text-sm font-bold text-[#202020]">Confirmação instantânea por mensagem</p>
+              <p className="mt-0.5 text-xs text-[#555555]">
+                O número de WhatsApp cadastrado receberá o espelho do cadastro organizado e orientações oficiais de atualização.
+              </p>
             </div>
           </li>
-          <li className="shadow-soft flex gap-4 rounded-2xl bg-card p-4">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">3</span>
+          <li className="flex gap-3.5 rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-3.5 sm:p-4">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#C8102E] text-xs font-black text-white">
+              3
+            </span>
             <div className="pt-0.5">
-              <p className="font-semibold text-foreground">Efetue o pagamento via PIX</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">Escaneie o QR Code ou use o código Copia e Cola para pagar a taxa cadastral de R$ 15,00. A confirmação é imediata.</p>
+              <p className="text-sm font-bold text-[#202020]">Pagamento único via PIX PromissePay</p>
+              <p className="mt-0.5 text-xs text-[#555555]">
+                Escaneie o QR Code ou use o Copia e Cola para pagar a taxa administrativa de {brl(15)}. A liberação é instantânea 24/7.
+              </p>
             </div>
           </li>
         </ol>
       </div>
 
-      {/* Card para Avançar para a Página Separada de Pagamento PIX */}
-      <div className="shadow-soft mt-8 space-y-4 rounded-3xl border-2 border-primary/20 bg-card p-6 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-            <Sparkles className="size-3.5" /> Taxa Cadastral 2027
+      {/* Card para Avançar para a Página de Pagamento PIX */}
+      <div className="space-y-5 rounded-2xl border-2 border-[#C8102E] bg-white p-6 sm:p-8 shadow-soft">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E5E5E5] pb-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FCEBED] px-3 py-1 text-xs font-bold text-[#A50D24]">
+            <Sparkles className="size-3.5 text-[#C8102E]" /> Taxa Administrativa Cadastral 2027
           </div>
-          <span className="flex items-center gap-1 text-xs font-semibold text-success">
-            <Check className="size-3.5" /> Pagamento Exclusivo via PIX
+          <span className="flex items-center gap-1 text-xs font-bold text-emerald-700">
+            <Check className="size-3.5 stroke-[3]" /> Pagamento Exclusivo via PIX
           </span>
         </div>
 
         <div>
-          <h3 className="text-xl font-extrabold text-foreground sm:text-2xl">
-            Emissão e Regularização do Cadastro
+          <h3 className="text-xl sm:text-2xl font-black text-[#202020]">
+            Emissão e Regularização Cadastral
           </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Para garantir a emissão prioritária e atualização das suas informações com comprovante digital, efetue o pagamento da taxa cadastral única.
+          <p className="mt-1 text-xs sm:text-sm text-[#555555] leading-relaxed">
+            Garanta a emissão prioritária com protocolo digital e orientações personalizadas para manter o Bolsa Família e seus benefícios ativos ao longo de todo o ano de 2027.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
-          <div className="flex justify-between text-muted-foreground">
-            <span>Taxa de Emissão e Atualização 2027</span>
-            <span className="font-semibold text-foreground">{brl(15)}</span>
+        <div className="rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-4 text-sm">
+          <div className="flex justify-between text-xs sm:text-sm text-[#555555]">
+            <span>Taxa de Emissão e Triagem Cadastral</span>
+            <span className="font-bold text-[#202020]">{brl(15)}</span>
           </div>
-          <div className="mt-1 flex justify-between text-muted-foreground">
-            <span>Forma de Pagamento</span>
-            <span className="font-semibold text-primary">PIX Instantâneo</span>
+          <div className="mt-1.5 flex justify-between text-xs sm:text-sm text-[#555555]">
+            <span>Método de Pagamento</span>
+            <span className="font-bold text-[#C8102E] flex items-center gap-1">
+              <QrCode className="size-3.5" /> PIX Instantâneo
+            </span>
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-base font-extrabold text-foreground">
-            <span>Valor Total</span>
-            <span className="font-display text-2xl font-black text-primary">{brl(15)}</span>
+          <div className="mt-3 flex items-center justify-between border-t border-[#E5E5E5] pt-3 text-base font-extrabold text-[#202020]">
+            <span>Total a Pagar</span>
+            <span className="text-2xl font-black text-[#C8102E]">{brl(15)}</span>
           </div>
         </div>
 
         <Link
           to="/pagamento"
-          className="shadow-primary flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-extrabold tracking-wide text-primary-foreground transition hover:-translate-y-0.5 active:scale-[0.99]"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] text-base font-black tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2"
         >
           AVANÇAR PARA PAGAMENTO VIA PIX <ArrowRight className="size-5" />
         </Link>
 
-        <div className="flex items-center justify-center gap-4 pt-1 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-1 text-xs text-[#666666]">
           <span className="flex items-center gap-1">
-            <Lock className="size-3.5 text-primary" /> Gateway PromissePay Seguro
+            <Lock className="size-3.5 text-[#C8102E]" /> Gateway PromissePay Seguro
           </span>
           <span>·</span>
           <span className="flex items-center gap-1">
-            <ShieldCheck className="size-3.5 text-primary" /> Confirmação Imediata
+            <ShieldCheck className="size-3.5 text-[#C8102E]" /> Confirmação Imediata 24/7
           </span>
         </div>
       </div>
 
       {onRestart && (
-        <div className="mt-6 text-center">
+        <div className="pt-2 text-center">
           <button
+            type="button"
             onClick={onRestart}
-            className="text-xs font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="text-xs font-bold text-[#666666] underline-offset-4 hover:text-[#C8102E] hover:underline transition"
           >
             Refazer questionário e limpar respostas
           </button>

