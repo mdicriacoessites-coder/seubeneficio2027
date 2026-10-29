@@ -1,17 +1,17 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Menu, ShieldCheck, X, HelpCircle, FileCheck, Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logoBolsaFamilia from "@/assets/logo-bolsa-familia.png";
 
 interface SiteHeaderProps {
-  onBack?: () => void;
-  canBack?: boolean;
-  step?: number;
-  totalSteps?: number;
-  timeRemaining?: number;
-  stepLabel?: string;
-  showProgress?: boolean;
-  progressPercent?: number;
+  onBack?: (() => void) | undefined;
+  canBack?: boolean | undefined;
+  step?: number | undefined;
+  totalSteps?: number | undefined;
+  timeRemaining?: number | undefined;
+  stepLabel?: string | undefined;
+  showProgress?: boolean | undefined;
+  progressPercent?: number | undefined;
 }
 
 export function SiteHeader({
@@ -25,9 +25,24 @@ export function SiteHeader({
   progressPercent = 0,
 }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // Fecha o menu ao trocar de tela/rota
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#A50D24] bg-[#C8102E] text-white shadow-md">
+    <>
+      {/* Overlay invisível para fechar menu ao clicar fora */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <header className="sticky top-0 z-30 border-b border-[#A50D24] bg-[#C8102E] text-white shadow-md">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5 sm:py-3">
         {/* Lado Esquerdo: Voltar + Logo do Projeto */}
         <div className="flex items-center gap-2.5 sm:gap-3">
@@ -161,5 +176,6 @@ export function SiteHeader({
         </div>
       )}
     </header>
+    </>
   );
 }

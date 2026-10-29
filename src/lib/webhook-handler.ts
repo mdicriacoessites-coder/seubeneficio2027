@@ -121,9 +121,12 @@ export const handlePromissePayWebhook = createServerFn({ method: "POST" })
       notificarPagamentoConfirmado({
         transacaoId: transactionId,
         valor: paymentData.amount || 1500,
-        externalId: transactionId,
-        nome: paymentData.payerName || undefined,
-        pagoEm: paymentData.paidAt || undefined,
+        status: paymentData.status,
+        payerName: paymentData.payerName ?? null,
+        payerDocument: paymentData.payerDocument ?? null,
+        payerBank: paymentData.payerBank ?? null,
+        paidAt: paymentData.paidAt ?? null,
+        endToEnd: paymentData.endToEnd ?? null,
       }).catch((err) => console.error("[Discord] Erro ao notificar confirmado:", err));
     }
 

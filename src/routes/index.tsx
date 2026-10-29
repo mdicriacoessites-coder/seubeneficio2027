@@ -124,8 +124,8 @@ function Index() {
         />
 
         <main key={String(screen)} className="animate-step mx-auto max-w-2xl px-4 pb-16 pt-6 sm:pt-8">
-          {/* Banner Institucional com as duas Logos integradas */}
-          <InstitutionalBanner compact={screen === "review" || screen === "result"} />
+          {/* Banner Institucional — apenas na primeira tela */}
+          {screen === 1 && <InstitutionalBanner />}
 
           {/* Etapas do Questionário */}
           {screen === 1 && <StepLocation a={a} set={set} onNext={() => next(2)} />}
@@ -273,14 +273,22 @@ function Continue({
   label?: string;
 }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] text-base font-extrabold tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2"
-    >
-      {label} <ArrowRight className="size-5" />
-    </button>
+    <div className="mt-8 space-y-2">
+      {disabled && (
+        <p className="text-center text-xs font-semibold text-[#C8102E]">
+          Selecione uma opção acima para continuar.
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] px-4 py-3.5 text-sm sm:text-base font-extrabold tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2 leading-snug text-center"
+      >
+        <span>{label}</span>
+        <ArrowRight className="size-5 shrink-0" />
+      </button>
+    </div>
   );
 }
 
@@ -300,22 +308,33 @@ function StepLocation({
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!a.uf) return;
+    if (!a.uf) {
+      setCities([]);
+      return;
+    }
     setLoading(true);
     setError("");
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${a.uf}/municipios`)
       .then((r) => r.json())
-      .then((d: { nome: string }[]) => setCities(d.map((c) => c.nome)))
+      .then((d: { nome: string }[]) => {
+        const sorted = d.map((c) => c.nome).sort((x, y) => x.localeCompare(y, "pt-BR"));
+        setCities(sorted);
+      })
       .catch(() => setError("Não foi possível carregar as cidades. Verifique sua conexão."))
       .finally(() => setLoading(false));
   }, [a.uf]);
 
+  useEffect(() => {
+    setQ(a.city);
+  }, [a.city]);
+
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const matches = useMemo(
-    () => (q ? cities.filter((c) => norm(c).includes(norm(q))).slice(0, 8) : []),
-    [q, cities],
+    () => (q && a.uf ? cities.filter((c) => norm(c).includes(norm(q))).slice(0, 8) : []),
+    [q, cities, a.uf],
   );
-  const valid = a.uf && cities.includes(a.city);
+
+  const valid = Boolean(a.uf && a.city && cities.includes(a.city));
 
   return (
     <Question
@@ -323,12 +342,13 @@ function StepLocation({
       subtitle="Selecione sua localidade para vincularmos ao calendário de pagamentos e agências do seu município."
     >
       <div className="space-y-4">
+        {/* Estado */}
         <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]" htmlFor="uf">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]" htmlFor="uf-select">
             Estado (UF)
           </label>
           <select
-            id="uf"
+            id="uf-select"
             value={a.uf}
             onChange={(e) => {
               set("uf", e.target.value);
@@ -339,44 +359,47 @@ function StepLocation({
           >
             <option value="">Selecione seu estado...</option>
             {UFS.map(([s, n]) => (
-              <option key={s} value={s}>
-                {n} ({s})
-              </option>
+              <option key={s} value={s}>{n} ({s})</option>
             ))}
           </select>
         </div>
 
+        {/* Cidade */}
         <div>
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]">
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#555555]" htmlFor="city-input">
             Cidade / Município
           </label>
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#C8102E]" />
+            <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#C8102E] z-10" />
             <input
-              aria-label="Cidade"
+              id="city-input"
+              type="text"
+              aria-label="Cidade / Município"
+              autoComplete="off"
               disabled={!a.uf || loading}
               value={q}
-              autoComplete="off"
               placeholder={
                 !a.uf
                   ? "Selecione o estado acima primeiro"
                   : loading
-                  ? "Carregando cidades do IBGE..."
-                  : "Digite o nome da sua cidade"
+                  ? "Carregando cidades..."
+                  : "Digite o nome da sua cidade..."
               }
               onChange={(e) => {
                 setQ(e.target.value);
                 set("city", "");
                 setOpen(true);
               }}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 200)}
-              className="h-12 sm:h-14 w-full rounded-xl border border-[#E5E5E5] bg-white pl-12 pr-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] disabled:bg-[#F5F5F5] disabled:opacity-60 transition-colors focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20"
+              onFocus={() => {
+                if (a.uf) setOpen(true);
+              }}
+              onBlur={() => setTimeout(() => setOpen(false), 250)}
+              className="h-12 sm:h-14 w-full rounded-xl border border-[#E5E5E5] bg-white pl-12 pr-4 font-semibold text-[#202020] placeholder:font-normal placeholder:text-[#888888] transition-colors focus:border-[#C8102E] focus:outline-none focus:ring-2 focus:ring-[#C8102E]/20 disabled:bg-[#F5F5F5] disabled:cursor-not-allowed disabled:opacity-60"
             />
             {open && matches.length > 0 && !a.city && (
               <ul
                 role="listbox"
-                className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-[#E5E5E5] bg-white p-1 shadow-lg"
+                className="absolute z-30 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-[#E5E5E5] bg-white p-1 shadow-lg"
               >
                 {matches.map((c) => (
                   <li key={c}>
@@ -396,10 +419,17 @@ function StepLocation({
               </ul>
             )}
           </div>
+
+          {loading && a.uf && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-[#C8102E]">
+              <span className="inline-block size-3 animate-spin rounded-full border-2 border-[#C8102E] border-t-transparent" />
+              Carregando municípios...
+            </p>
+          )}
           {error && <p className="mt-1.5 text-xs font-bold text-[#C8102E]">{error}</p>}
           {q && !a.city && !loading && cities.length > 0 && !open && (
             <p className="mt-1.5 text-xs font-semibold text-[#C8102E]">
-              Selecione uma cidade na lista para validar seu município.
+              Clique na sua cidade na lista para selecionar.
             </p>
           )}
         </div>
@@ -611,9 +641,10 @@ function Result({ a, onRestart }: { a: Answers; onRestart?: () => void }) {
 
         <Link
           to="/pagamento"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] text-base font-black tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2"
+          className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#C8102E] px-4 py-3.5 text-sm sm:text-base font-black tracking-wide text-white shadow-primary transition-all duration-200 hover:bg-[#A50D24] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C8102E] focus-visible:ring-offset-2 leading-snug text-center"
         >
-          AVANÇAR PARA PAGAMENTO VIA PIX <ArrowRight className="size-5" />
+          <span>AVANÇAR PARA PAGAMENTO VIA PIX</span>
+          <ArrowRight className="size-5 shrink-0" />
         </Link>
 
         <div className="flex flex-wrap items-center justify-center gap-4 pt-1 text-xs text-[#666666]">

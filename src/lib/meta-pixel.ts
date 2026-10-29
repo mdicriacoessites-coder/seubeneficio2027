@@ -19,7 +19,7 @@ export const META_PIXEL_ID = "1747898422962307";
 /**
  * Lê os cookies oficiais da Meta (_fbp e _fbc) no navegador
  */
-export function getMetaCookies(): { fbp?: string; fbc?: string } {
+export function getMetaCookies(): { fbp?: string | undefined; fbc?: string | undefined } {
   if (typeof document === "undefined") return {};
   try {
     const cookies = document.cookie.split(";").reduce((acc, c) => {
@@ -28,8 +28,8 @@ export function getMetaCookies(): { fbp?: string; fbc?: string } {
       return acc;
     }, {} as Record<string, string>);
     return {
-      fbp: cookies["_fbp"],
-      fbc: cookies["_fbc"],
+      fbp: cookies["_fbp"] ?? undefined,
+      fbc: cookies["_fbc"] ?? undefined,
     };
   } catch {
     return {};
@@ -89,11 +89,11 @@ export function trackPixel(
         event_source_url: sourceUrl,
         user_data: {
           client_user_agent: userAgent,
-          fbp: metaCookies.fbp,
-          fbc: metaCookies.fbc,
+          ...(metaCookies.fbp ? { fbp: metaCookies.fbp } : {}),
+          ...(metaCookies.fbc ? { fbc: metaCookies.fbc } : {}),
           ...options?.userData,
         },
-        custom_data: params,
+        ...(params ? { custom_data: params } : {}),
       },
     }).catch((err) => {
       console.warn(`[Meta CAPI] Aviso no envio assíncrono do evento ${event}:`, err?.message || err);
@@ -134,11 +134,11 @@ export function trackCustomPixel(
         event_source_url: window.location.href,
         user_data: {
           client_user_agent: navigator.userAgent,
-          fbp: metaCookies.fbp,
-          fbc: metaCookies.fbc,
+          ...(metaCookies.fbp ? { fbp: metaCookies.fbp } : {}),
+          ...(metaCookies.fbc ? { fbc: metaCookies.fbc } : {}),
           ...options?.userData,
         },
-        custom_data: params,
+        ...(params ? { custom_data: params } : {}),
       },
     }).catch(() => {});
   }

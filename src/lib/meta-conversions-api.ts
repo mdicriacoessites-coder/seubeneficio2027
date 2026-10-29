@@ -5,20 +5,72 @@
  * Garante segurança, deduplicação com o Meta Pixel (via event_id)
  * e hash SHA-256 para Advanced Matching (parâmetros de cliente).
  */
-import { createHash } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 
+function sha256Hex(ascii: string): string {
+  function r(v: number, a: number) { return (v >>> a) | (v << (32 - a)); }
+  const max = Math.pow(2, 32);
+  let result = "";
+  const words: number[] = [];
+  const len = ascii.length * 8;
+  let hash: number[] = [];
+  const k: number[] = [];
+  let primes = 0;
+  const comp: Record<number, number> = {};
+  for (let c = 2; primes < 64; c++) {
+    if (!comp[c]) {
+      for (let i = 0; i < 313; i += c) comp[i] = c;
+      hash[primes] = (Math.pow(c, 0.5) * max) | 0;
+      k[primes++] = (Math.pow(c, 1 / 3) * max) | 0;
+    }
+  }
+  ascii += "\x80";
+  while ((ascii.length % 64) - 56) ascii += "\x00";
+  for (let i = 0; i < ascii.length; i++) {
+    const j = ascii.charCodeAt(i);
+    const idx = i >> 2;
+    words[idx] = (words[idx] ?? 0) | (j << (((3 - i) % 4) * 8));
+  }
+  words[words.length] = (len / max) | 0;
+  words[words.length] = len | 0;
+  for (let j = 0; j < words.length;) {
+    const w = words.slice(j, (j += 16));
+    const old = hash;
+    hash = hash.slice(0, 8);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15] ?? 0;
+      const w2 = w[i - 2] ?? 0;
+      const s0 = r(w15, 7) ^ r(w15, 18) ^ (w15 >>> 3);
+      const s1 = r(w2, 17) ^ r(w2, 19) ^ (w2 >>> 10);
+      w[i] = i < 16 ? (w[i] ?? 0) : ((w[i - 16] ?? 0) + s0 + (w[i - 7] ?? 0) + s1) | 0;
+      const ch = ((hash[4] ?? 0) & (hash[5] ?? 0)) ^ (~(hash[4] ?? 0) & (hash[6] ?? 0));
+      const maj = ((hash[0] ?? 0) & (hash[1] ?? 0)) ^ ((hash[0] ?? 0) & (hash[2] ?? 0)) ^ ((hash[1] ?? 0) & (hash[2] ?? 0));
+      const t1 = ((hash[7] ?? 0) + (r(hash[4] ?? 0, 6) ^ r(hash[4] ?? 0, 11) ^ r(hash[4] ?? 0, 25)) + ch + (k[i] ?? 0) + (w[i] ?? 0)) | 0;
+      const t2 = ((r(hash[0] ?? 0, 2) ^ r(hash[0] ?? 0, 13) ^ r(hash[0] ?? 0, 22)) + maj) | 0;
+      hash = [(t1 + t2) | 0, hash[0] ?? 0, hash[1] ?? 0, hash[2] ?? 0, ((hash[3] ?? 0) + t1) | 0, hash[4] ?? 0, hash[5] ?? 0, hash[6] ?? 0];
+    }
+    for (let i = 0; i < 8; i++) hash[i] = ((hash[i] ?? 0) + (old[i] ?? 0)) | 0;
+  }
+  for (let i = 0; i < 8; i++) {
+    for (let b = 3; b >= 0; b--) {
+      const byte = ((hash[i] ?? 0) >> (b * 8)) & 255;
+      result += (byte < 16 ? "0" : "") + byte.toString(16);
+    }
+  }
+  return result;
+}
+
 export interface MetaUserData {
-  client_ip_address?: string;
-  client_user_agent?: string;
-  fbp?: string;
-  fbc?: string;
-  nome?: string;
-  telefone?: string;
-  email?: string;
-  cidade?: string;
-  uf?: string;
-  cep?: string;
+  client_ip_address?: string | undefined;
+  client_user_agent?: string | undefined;
+  fbp?: string | undefined;
+  fbc?: string | undefined;
+  nome?: string | undefined;
+  telefone?: string | undefined;
+  email?: string | undefined;
+  cidade?: string | undefined;
+  uf?: string | undefined;
+  cep?: string | undefined;
 }
 
 export interface MetaCustomData {
@@ -36,11 +88,11 @@ export interface MetaCustomData {
 export interface MetaCapiEventInput {
   event_name: "PageView" | "ViewContent" | "InitiateCheckout" | "Purchase" | string;
   event_id: string;
-  event_time?: number; // Unix timestamp em segundos
-  event_source_url?: string;
-  user_data?: MetaUserData;
-  custom_data?: MetaCustomData;
-  test_event_code?: string;
+  event_time?: number | undefined;
+  event_source_url?: string | undefined;
+  user_data?: MetaUserData | undefined;
+  custom_data?: MetaCustomData | undefined;
+  test_event_code?: string | undefined;
 }
 
 // Conjunto para garantir idempotência de eventos Purchase no servidor
@@ -51,7 +103,7 @@ export function hashSha256(value: string | undefined | null): string | undefined
   if (!value) return undefined;
   const clean = value.trim().toLowerCase();
   if (!clean) return undefined;
-  return createHash("sha256").update(clean).digest("hex");
+  return sha256Hex(clean);
 }
 
 /** Normaliza número de telefone brasileiro para formato E.164 (55 + DDD + dígitos) e aplica hash */
@@ -70,7 +122,7 @@ export function hashPhone(phone: string | undefined | null): string | undefined 
 }
 
 /** Normaliza nome completo em primeiro e último nome */
-export function hashName(fullName: string | undefined | null): { fn?: string; ln?: string } {
+export function hashName(fullName: string | undefined | null): { fn?: string | undefined; ln?: string | undefined } {
   if (!fullName) return {};
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return {};
@@ -122,18 +174,18 @@ export async function sendMetaCapiEvent(input: MetaCapiEventInput): Promise<{
   const st = hashSha256(u.uf);
   const zp = u.cep ? hashSha256(u.cep.replace(/\D/g, "")) : undefined;
 
-  const userDataFormatted: Record<string, any> = {};
-  if (u.client_ip_address) userDataFormatted.client_ip_address = u.client_ip_address;
-  if (u.client_user_agent) userDataFormatted.client_user_agent = u.client_user_agent;
-  if (u.fbp) userDataFormatted.fbp = u.fbp;
-  if (u.fbc) userDataFormatted.fbc = u.fbc;
-  if (ph) userDataFormatted.ph = [ph];
-  if (em) userDataFormatted.em = [em];
-  if (fn) userDataFormatted.fn = [fn];
-  if (ln) userDataFormatted.ln = [ln];
-  if (ct) userDataFormatted.ct = [ct];
-  if (st) userDataFormatted.st = [st];
-  if (zp) userDataFormatted.zp = [zp];
+  const userDataFormatted: Record<string, unknown> = {};
+  if (u.client_ip_address) userDataFormatted["client_ip_address"] = u.client_ip_address;
+  if (u.client_user_agent) userDataFormatted["client_user_agent"] = u.client_user_agent;
+  if (u.fbp) userDataFormatted["fbp"] = u.fbp;
+  if (u.fbc) userDataFormatted["fbc"] = u.fbc;
+  if (ph) userDataFormatted["ph"] = [ph];
+  if (em) userDataFormatted["em"] = [em];
+  if (fn) userDataFormatted["fn"] = [fn];
+  if (ln) userDataFormatted["ln"] = [ln];
+  if (ct) userDataFormatted["ct"] = [ct];
+  if (st) userDataFormatted["st"] = [st];
+  if (zp) userDataFormatted["zp"] = [zp];
 
   const eventPayload = {
     event_name: input.event_name,
@@ -150,11 +202,11 @@ export async function sendMetaCapiEvent(input: MetaCapiEventInput): Promise<{
     process.env["META_TEST_EVENT_CODE"] ||
     undefined;
 
-  const requestBody: Record<string, any> = {
+  const requestBody: Record<string, unknown> = {
     data: [eventPayload],
   };
   if (testEventCode) {
-    requestBody.test_event_code = testEventCode;
+    requestBody["test_event_code"] = testEventCode;
   }
 
   try {

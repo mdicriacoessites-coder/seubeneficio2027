@@ -36,8 +36,8 @@ export async function notificarPagamentoPendente(params: {
   transacaoId: string;
   valor: number; // em centavos
   externalId: string;
-  nome?: string;
-  telefone?: string;
+  nome?: string | undefined;
+  telefone?: string | undefined;
 }): Promise<void> {
   const { transacaoId, valor, externalId, nome, telefone } = params;
 
